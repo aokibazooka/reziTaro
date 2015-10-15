@@ -1,3 +1,8 @@
 # reziTaro
-npm install
-してください
+複数人用のレジ
+
+# Instllation
+	$ npm install
+
+# Usage
+    $ node app.js
