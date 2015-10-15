@@ -1,1 +1,3 @@
 # reziTaro
+npm install
+してください
