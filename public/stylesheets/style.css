@@ -1,0 +1,26 @@
+html{
+    
+}
+td{
+    border-bottom: solid 1px;
+    border-bottom-color: black;
+}
+th{
+    border-bottom: solid 1px;
+    border-bottom-color: black;
+    align = "left";
+}
+button{
+    color: aqua;
+}
+.form{
+    padding-left: 0em;
+}
+#message{
+    min-height: 1.3em;
+    color: red;
+}
+p{
+    padding: 0;
+    margin: 0;
+}

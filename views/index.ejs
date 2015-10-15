@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>会計</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/javascripts/jquery-1.8.3.min.js"></script>
+    <script>
+        var timerId; //setTimeOutを止めるのに使う
+        // 新しい関数たち
+        function writeSyouhinList(hairetu) {
+            $('.syouhin').each(function () {
+                $(this).remove();
+            })
+            hairetu.forEach(function (obj, index) {
+                var uriage = parseInt(obj.nedan) * parseInt(obj.uriagekosu);
+                var select = $('<select class="syouhin' + index + '"></select>');
+                var opt = [];
+                for (var i = 1; i <= 10; i++) {
+                    opt.push('<option value="' + i + '">' + i + '個</option>');
+                }
+                select.append(opt.join(''));
+                var elem = $('<tr class="syouhin"></tr>')
+                    .append('<td>' + obj.syouhinmei + '</td>')
+                    .append('<td>' + obj.nedan + '</td>')
+                    .append('<td>' + obj.uriagekosu + '</td>')
+                    .append('<td>' + uriage + '</td>')
+                    .append($('<td></td>').append(select))
+                    .append('<td><input class="kounyu" id="syouhin' + index + '" type="button" value="購入"></td>');
+                $('#syouhinList').append(elem);
+            });
+        }
+
+        function addToNyuryokuList(obj) {
+            var dfd = $.Deferred();
+            var elem = $('<tr></tr>')
+                .append('<td>' + obj.time + '</td>')
+                .append('<td>' + obj.syouhinmei + '</td>')
+                .append('<td>' + obj.kosu + '</td>')
+                .append('<td>' + obj.kingaku + '</td>')
+                .append('<td><input class="sakujo" type="button" value="削除"></td>')
+            $("#nyuryokuList").after(function () {
+                dfd.resolve();
+                return elem;
+            }); //たぶんこれが非同期で、時間がかかってて終わるのがプルダウン書き換えの後になっている？
+            return dfd.promise();
+        }
+
+        function removeNyuryokuDate(that) {
+            $(that).closest('tr').remove();
+        }
+
+        function recieveNyuryokuDate(syouhinList, obj) {
+            var id = obj.syouhinId;
+            var syouhinmei = syouhinList[id].syouhinmei;
+            var kingaku = parseInt(syouhinList[id].nedan) * parseInt(obj.kosu);
+            var addObj = {
+                time: obj.time,
+                syouhinmei: syouhinmei,
+                kosu: obj.kosu,
+                kingaku: kingaku
+            };
+            //プルダウンの値を保持するため①
+            var keepVal = [];
+            $('select').each(function (index, element) {
+                keepVal.push($(element).val());
+            });
+            addToNyuryokuList(addObj)
+                .done(function () {
+                    $('select').each(function (index, element) {
+                        $(element).val(keepVal[index]);
+                    });
+                });;
+        }
+
+        function alertOnDiv(str, sec) { //引数なしでクリア
+            if (str == undefined && sec == undefined) {
+                $('#message').html("");
+            } else {
+                clearTimeout(timerId);
+                if (sec == undefined) sec = 5;
+                var elem = $('<div id="alert"></div>').html(str);
+                $('#message').html(elem);
+                timerId = setTimeout(function () {
+                    $('#alert').remove();
+                }, sec * 1000);
+            }
+        }
+
+        function toHankakuNum(motoText) {
+            han = "0123456789.,-+";
+            zen = "０１２３４５６７８９．，－＋";
+            str = "";
+            for (i = 0; i < motoText.length; i++) {
+                c = motoText.charAt(i);
+                n = zen.indexOf(c, 0);
+                if (n >= 0) c = han.charAt(n);
+                str += c;
+            }
+            return str;
+        }
+        $(function () {
+            var syouhin = [];
+            var socket = io.connect('http://' + location.host + '/');
+            $(document).on('click', '#syouhintuika', function () {
+                var syouhinmei = $('#tsuikasyouhin').val();
+                var syouhinNedan = toHankakuNum($('#syouhinnedan').val());
+                var messageHtml = '';
+                var error = 0;
+
+                function addError(str) {
+                    messageHtml += '<p>' + str + '</p>';
+                    error = 1;
+                }
+                if (syouhinmei == "") {
+                    addError('商品名を入力してください');
+                }
+                if (syouhinNedan == "") {
+                    addError('値段を入力してください');
+                } else if (isNaN(syouhinNedan)) {
+                    addError('値段には数字を入力してください');
+                } else if (syouhinNedan < 0 || syouhinNedan % 1 != 0) {
+                    addError('値段は正の整数にしてください');
+                }
+                if (error == 0) {
+                    alertOnDiv(); //クリア
+                    var syouhinData = {
+                        syouhinmei: syouhinmei,
+                        nedan: syouhinNedan
+                    }
+                    socket.emit('addSyouhin', syouhinData);
+                } else {
+                    alertOnDiv(messageHtml);
+                }
+            });
+            $(document).on('click', '.kounyu', function () {
+                var date = new Date();
+                var month = date.getMonth() + 1;
+                var day = date.getDate();
+                var hour = date.getHours();
+                var minute = date.getMinutes();
+                var id = $(this).attr('id').slice(7);
+                var kosu = $('select.syouhin' + id).val();
+                var kounyuData = {
+                    time: month + '/' + day + ' ' + hour + ':' + minute,
+                    syouhinId: id,
+                    kosu: kosu
+                }
+                socket.emit('addKounyu', kounyuData);
+            });
+            $(document).on('click', '.sakujo', function () {
+                removeNyuryokuDate(this);
+            });
+            $('input').keypress(function (ev) {
+                if ((ev.which && ev.which === 13) || (ev.keyCode && ev.keyCode === 13)) {
+                    $('#syouhintuika').trigger('click');
+                    return false;
+                } else {
+                    return true;
+                }
+            });
+
+            socket.on('addKounyuRe', function (kounyuData) {
+                recieveNyuryokuDate(syouhin, kounyuData);
+            });
+            socket.on('addSyouhinRe', function (syouhinData) {
+                syouhin = syouhinData;
+                writeSyouhinList(syouhinData);
+            });
+            socket.on('Error', function (errorCode) {
+                switch (errorCode) {
+                case 0:
+                    alertOnDiv('<p>同じ商品名のものがすでにあります</P>')
+                }
+            });
+
+        });
+    </script>
+</head>
+
+<body>
+    <form>
+        商品名
+        <input id="tsuikasyouhin" type="text">
+        <br>値段
+        <input id="syouhinnedan">
+        <input id="syouhintuika" type="button" value="商品追加">
+    </form>
+    <div id="message"></div>
+    <div>
+        <table id="syouhinList">
+            <tr>
+                <th>商品名</th>
+                <th>値段</th>
+                <th>売上個数</th>
+                <th>売上</th>
+            </tr>
+        </table>
+        <table>
+            <tr id="nyuryokuList">
+                <th>時間</th>
+                <th>商品名</th>
+                <th>個数</th>
+                <th>値段</th>
+            </tr>
+        </table>
+    </div>
+</body>
+
+</html>
