@@ -64,10 +64,7 @@ app.use(function (err, req, res, next) {
 
 var mongoose = require('mongoose');
 var ObjectId = require('mongoose').Schema.ObjectId;
-
-//localhostのnode_memo_demoのデータベースに接続。
 var db = mongoose.connect('mongodb://localhost/kaikei_demo10');
-//メモのスキーマを宣言。
 var SyouhinSchema = new mongoose.Schema({
     syouhinmei: {
         type: String
@@ -83,19 +80,18 @@ var KounyuSchema = new mongoose.Schema({
     kosu: Number,
     delete: Boolean
 });
-var indexToId = [];
-var kounyuSu = 0;
-//スキーマからモデルを生成。
 var Syouhin = db.model('syouhin', SyouhinSchema);
 var Kounyu = db.model('kounyu', KounyuSchema);
+var indexToId = [];
+var kounyuSu = 0;
 
 // データベース初期化用
-//Syouhin.remove({}, function(err) { 
-//   console.log('collection removed') 
-//});
-//Kounyu.remove({}, function(err) { 
-//   console.log('collection removed') 
-//});
+Syouhin.remove({}, function (err) {
+    console.log('collection removed')
+});
+Kounyu.remove({}, function (err) {
+    console.log('collection removed')
+});
 
 // 起動時に配列のインデックスとidを結びつける
 Syouhin.find(function (err, items) {
@@ -152,12 +148,10 @@ io.sockets.on('connection', function (socket) {
             if (err) {
                 return;
             }
-            io.sockets.emit('addKounyuRe', kounyuData);
+            io.sockets.emit('addKounyuRe', kounyu);
         });
         var id = indexToId[kounyuData.syouhinId];
-        Syouhin.findOne({
-            _id: id
-        }, function (err, item) {
+        Syouhin.findById(id, function (err, item) {
             var newUriagekosu = parseInt(item.uriagekosu) + parseInt(kounyuData.kosu);
             item.uriagekosu = newUriagekosu;
             item.save();
@@ -166,14 +160,28 @@ io.sockets.on('connection', function (socket) {
             });
         });
     });
-    socket.on('sakujo', function(sakujoId){
-        console.log(ObjectId(sakujoId));
-        Kounyu.find({_id: ObjectId(sakujoId)}, function(elem){ // IDから検索できない
-//            elem.delete = true;
-            console.log(elem);
+    socket.on('sakujo', function (sakujoId) {
+        Kounyu.findById(sakujoId, function (err, item) {
+            item.delete = true;
+            item.save(function (err) {
+                if (err) {
+                    return;
+                }
+                io.sockets.emit('deleteRe', sakujoId);
+            });
         });
-    })
+    });
+    socket.on('hukkatu', function (hukkatuId) {
+        Kounyu.findById(hukkatuId, function (err, item) {
+            item.delete = false;
+            item.save(function (err) {
+                if (err) {
+                    return;
+                }
+                io.sockets.emit('hukkatuRe', hukkatuId);
+            });
+        });
+    });
 });
-
 
 module.exports = app;

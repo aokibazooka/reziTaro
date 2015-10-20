@@ -24,9 +24,10 @@ p{
     padding: 0;
     margin: 0;
 }
-deleted {
-    visibility: hidden;
+.deleted {
+    display: none;
 }
-usui {
-    color: gray;
+.usui {
+    color: #cbcbcb;
+    display: table-row;
 }

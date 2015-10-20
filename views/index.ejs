@@ -36,23 +36,24 @@
                     .append('<td><input class="kounyu" id="syouhin' + index + '" type="button" value="購入"></td>');
                 $('#syouhinList').append(elem);
             });
+            // プルダウンの値を維持するため②
             $('select').each(function (index, element) {
                 $(element).val(keepVal[index]);
             });
+
         }
 
         function addToNyuryokuList(obj) {
-            console.log(obj);
-            var elem = $('<tr id='+obj.id+'></tr>')
+            var elem = $('<tr id=' + obj.id + '></tr>')
                 .append('<td>' + obj.time + '</td>')
                 .append('<td>' + obj.syouhinmei + '</td>')
                 .append('<td>' + obj.kosu + '</td>')
                 .append('<td>' + obj.kingaku + '</td>')
                 .append('<td><input class="sakujo" type="button" value="削除"></td>')
-            $("#nyuryokuList").after(elem);
-            if(obj.delete==true){
+            if (obj.delete == true) {
                 elem.addClass("deleted");
             }
+            $("#nyuryokuList").after(elem);
         }
 
         function recieveNyuryokuDate(syouhinList, obj) {
@@ -64,7 +65,8 @@
                 syouhinmei: syouhinmei,
                 kosu: obj.kosu,
                 kingaku: kingaku,
-                id: obj._id
+                id: obj._id,
+                delete: obj.delete
             };
             addToNyuryokuList(addObj);
         }
@@ -95,9 +97,9 @@
             }
             return str;
         }
-        
-        function hideDeleted(){
-            
+
+        function hideDeleted() {
+
         }
         $(function () {
             var syouhin = [];
@@ -134,6 +136,7 @@
                 } else {
                     alertOnDiv(messageHtml);
                 }
+                $(this).closest('select').val('1'); //動いてない
             });
             $(document).on('click', '.kounyu', function () {
                 var date = new Date();
@@ -152,10 +155,28 @@
             });
             $(document).on('click', '.sakujo', function () {
                 var sakujoId = $(this).closest('tr').attr("id");
-                console.log(sakujoId);
                 socket.emit('sakujo', sakujoId);
             });
-
+            $(document).on('click', '.sakujoTorikesi', function () {
+                $(this).addClass('sakujoTorikesiEnd').removeClass('sakujoTorikesi');
+                $(this).val('完了');
+                $('.sakujo').val('復活');
+                $('.deleted').addClass('usui');
+                $('.sakujo').closest('tr:not(.usui)').find('.sakujo:first').addClass('deleted');
+                $('.sakujo').addClass('hukkatu');
+                $('.sakujo').removeClass('sakujo');
+                $(document).on('click', '.hukkatu', function () {
+                    var hukkatuId = $(this).closest('tr').attr("id");
+                    $(this).addClass('deleted');
+                    socket.emit('hukkatu', hukkatuId);
+                });
+            });
+            $(document).on('click', '.sakujoTorikesiEnd', function () {
+                $(this).addClass('sakujoTorikesi').removeClass('sakujoTorikesiEnd');
+                $(this).val('復活モード');
+                $('.hukkatu').removeClass('deleted').addClass('sakujo').removeClass('hukkatu').val('削除');
+                $('.usui').removeClass('usui');
+            });
             $('input').keypress(function (ev) {
                 if ((ev.which && ev.which === 13) || (ev.keyCode && ev.keyCode === 13)) {
                     $('#syouhintuika').trigger('click');
@@ -164,13 +185,23 @@
                     return true;
                 }
             });
-
             socket.on('addKounyuRe', function (kounyuData) {
                 recieveNyuryokuDate(syouhin, kounyuData);
             });
             socket.on('addSyouhinRe', function (syouhinData) {
+                var ruikei = 0;
+                syouhinData.forEach(function(data){
+                    ruikei += data.nedan*data.uriagekosu;
+                });
+                $('#ruikei').text(ruikei);
                 syouhin = syouhinData;
                 writeSyouhinList(syouhinData);
+            });
+            socket.on('deleteRe', function (sakujoId) {
+                $('#' + sakujoId).closest('tr').addClass('deleted');
+            });
+            socket.on('hukkatuRe', function (hukkatuId) {
+                $('#' + hukkatuId).closest('tr').removeClass('deleted usui');
             });
             socket.on('Error', function (errorCode) {
                 switch (errorCode) {
@@ -192,6 +223,13 @@
     </form>
     <div id="message"></div>
     <div>
+        <div>
+            <table>
+                <tr>
+                    <th>累計売上</th><td id="ruikei"></td>
+                </tr>
+            </table>
+        </div>
         <table id="syouhinList">
             <tr>
                 <th>商品名</th>
@@ -206,6 +244,9 @@
                 <th>商品名</th>
                 <th>個数</th>
                 <th>値段</th>
+                <th>
+                    <input class="sakujoTorikesi" type="button" value="復活モード">
+                </th>
             </tr>
         </table>
     </div>
