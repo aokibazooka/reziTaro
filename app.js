@@ -64,6 +64,7 @@ app.use(function (err, req, res, next) {
 });
 
 var mongoose = require('mongoose');
+var ObjectId = require('mongoose').Schema.ObjectId;
 
 //localhostのnode_memo_demoのデータベースに接続。
 var db = mongoose.connect('mongodb://localhost/kaikei_demo10');
@@ -167,7 +168,8 @@ io.sockets.on('connection', function (socket) {
         });
     });
     socket.on('sakujo', function(sakujoId){
-        Kounyu.findOne({_id: sakujoId}, function(elem){ // IDから検索できない
+        console.log(ObjectId(sakujoId));
+        Kounyu.find({_id: ObjectId(sakujoId)}, function(elem){ // IDから検索できない
 //            elem.delete = true;
             console.log(elem);
         });
