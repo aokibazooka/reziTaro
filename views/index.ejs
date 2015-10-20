@@ -152,6 +152,7 @@
             });
             $(document).on('click', '.sakujo', function () {
                 var sakujoId = $(this).closest('tr').attr("id");
+                console.log(sakujoId);
                 socket.emit('sakujo', sakujoId);
             });
 

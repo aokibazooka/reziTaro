@@ -89,7 +89,7 @@ var kounyuSu = 0;
 var Syouhin = db.model('syouhin', SyouhinSchema);
 var Kounyu = db.model('kounyu', KounyuSchema);
 
-//削除用
+// データベース初期化用
 //Syouhin.remove({}, function(err) { 
 //   console.log('collection removed') 
 //});
@@ -167,7 +167,7 @@ io.sockets.on('connection', function (socket) {
         });
     });
     socket.on('sakujo', function(sakujoId){
-        Kounyu.findOne({_id: sakujoId}, function(elem){
+        Kounyu.findOne({_id: sakujoId}, function(elem){ // IDから検索できない
 //            elem.delete = true;
             console.log(elem);
         });
