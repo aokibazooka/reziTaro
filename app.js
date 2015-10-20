@@ -80,11 +80,21 @@ var KounyuSchema = new mongoose.Schema({
     },
     syouhinId: Number,
     kosu: Number,
+    delete: Boolean
 });
 var indexToId = [];
+var kounyuSu = 0;
 //スキーマからモデルを生成。
 var Syouhin = db.model('syouhin', SyouhinSchema);
 var Kounyu = db.model('kounyu', KounyuSchema);
+
+//削除用
+//Syouhin.remove({}, function(err) { 
+//   console.log('collection removed') 
+//});
+//Kounyu.remove({}, function(err) { 
+//   console.log('collection removed') 
+//});
 
 // 起動時に配列のインデックスとidを結びつける
 Syouhin.find(function (err, items) {
@@ -104,7 +114,7 @@ io.sockets.on('connection', function (socket) {
         socket.emit('addSyouhinRe', items);
     });
     Kounyu.find(function (err, items) {
-        items.forEach(function (item) {
+        items.forEach(function (item, index) {
             socket.emit('addKounyuRe', item);
         });
     });
@@ -136,6 +146,7 @@ io.sockets.on('connection', function (socket) {
     });
     socket.on('addKounyu', function (kounyuData) {
         var kounyu = new Kounyu(kounyuData);
+        kounyu.delete = false;
         kounyu.save(function (err) {
             if (err) {
                 return;
@@ -152,9 +163,14 @@ io.sockets.on('connection', function (socket) {
             Syouhin.find(function (err, items) {
                 io.sockets.emit('addSyouhinRe', items);
             });
-        })
-
+        });
     });
+    socket.on('sakujo', function(sakujoId){
+        Kounyu.findOne({_id: sakujoId}, function(elem){
+//            elem.delete = true;
+            console.log(elem);
+        });
+    })
 });
 
 
