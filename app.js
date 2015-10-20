@@ -85,13 +85,13 @@ var Kounyu = db.model('kounyu', KounyuSchema);
 var indexToId = [];
 var kounyuSu = 0;
 
-// データベース初期化用
-Syouhin.remove({}, function (err) {
-    console.log('collection removed')
-});
-Kounyu.remove({}, function (err) {
-    console.log('collection removed')
-});
+//// データベース初期化用
+//Syouhin.remove({}, function (err) {
+//    console.log('collection removed')
+//});
+//Kounyu.remove({}, function (err) {
+//    console.log('collection removed')
+//});
 
 // 起動時に配列のインデックスとidを結びつける
 Syouhin.find(function (err, items) {
@@ -161,24 +161,42 @@ io.sockets.on('connection', function (socket) {
         });
     });
     socket.on('sakujo', function (sakujoId) {
-        Kounyu.findById(sakujoId, function (err, item) {
-            item.delete = true;
-            item.save(function (err) {
+        Kounyu.findById(sakujoId, function (err, kounyuData) {
+            kounyuData.delete = true;
+            kounyuData.save(function (err) {
                 if (err) {
                     return;
                 }
                 io.sockets.emit('deleteRe', sakujoId);
+                var id = indexToId[kounyuData.syouhinId];
+                Syouhin.findById(id, function (err, item) {
+                    var newUriagekosu = parseInt(item.uriagekosu) - parseInt(kounyuData.kosu);
+                    item.uriagekosu = newUriagekosu;
+                    item.save();
+                    Syouhin.find(function (err, items) {
+                        io.sockets.emit('addSyouhinRe', items);
+                    });
+                });
             });
         });
     });
     socket.on('hukkatu', function (hukkatuId) {
-        Kounyu.findById(hukkatuId, function (err, item) {
-            item.delete = false;
-            item.save(function (err) {
+        Kounyu.findById(hukkatuId, function (err, kounyuData) {
+            kounyuData.delete = false;
+            kounyuData.save(function (err) {
                 if (err) {
                     return;
                 }
                 io.sockets.emit('hukkatuRe', hukkatuId);
+            });
+            var id = indexToId[kounyuData.syouhinId];
+            Syouhin.findById(id, function (err, item) {
+                var newUriagekosu = parseInt(item.uriagekosu) + parseInt(kounyuData.kosu);
+                item.uriagekosu = newUriagekosu;
+                item.save();
+                Syouhin.find(function (err, items) {
+                    io.sockets.emit('addSyouhinRe', items);
+                });
             });
         });
     });
