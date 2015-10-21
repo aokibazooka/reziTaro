@@ -5,6 +5,7 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var http = require('http');
+var xssFilters = require('xss-filters');
 
 var routes = require('./routes/index');
 
@@ -27,6 +28,9 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
+app.get('/del', function (req, res, next) {
+    res.render('del');
+})
 
 // 追加
 var server = http.createServer(app);
@@ -107,39 +111,76 @@ server.listen(app.get('port'), function () {
 var io = require('socket.io').listen(server);
 
 io.sockets.on('connection', function (socket) {
-    Syouhin.find(function (err, items) {
-        socket.emit('addSyouhinRe', items);
-    });
+    sendSyouhin();
     Kounyu.find(function (err, items) {
         items.forEach(function (item, index) {
             socket.emit('addKounyuRe', item);
         });
     });
-    //syouhinDataは{syouhinmei: Number, nedan: Number}の型
-    socket.on('addSyouhin', function (syouhinData) {
-        var query = {
-            syouhinmei: syouhinData.syouhinmei
-        };
-        Syouhin.find(query, function (err, items) {
-            if (err) {
-                console.log(err);
-            }
-            if (items.length == 0) { //データベースに同じ商品名のものがない場合
-                syouhinData.uriagekosu = 0;
-                var syouhin = new Syouhin(syouhinData);
-                indexToId.push(syouhin._id);
-                syouhin.save(function (err) {
-                    if (err) {
-                        return;
-                    }
-                    Syouhin.find(function (err, items) {
-                        io.sockets.emit('addSyouhinRe', items);
-                    });
-                });
-            } else {
-                socket.emit('Error', 0);
-            }
+
+    function sendSyouhin() {
+        Syouhin.find(function (err, items) {
+            items.forEach(function (item) {
+                item.syouhinmei = xssFilters.inHTMLData(item.syouhinmei);
+            });
+            io.sockets.emit('addSyouhinRe', items);
         });
+    }
+    socket.on('dell', function () {
+        Syouhin.remove({}, function (err) {
+            console.log('collection removed')
+        });
+        Kounyu.remove({}, function (err) {
+            console.log('collection removed')
+        });
+    });
+    socket.on('addSyouhin', function (syouhinData) {
+        var messageHtml = '';
+        var error = 0;
+
+        function addError(str) {
+            messageHtml += '<p>' + str + '</p>';
+            error = 1;
+        }
+        if (syouhinData.syouhinmei == "") {
+            addError('商品名を入力してください');
+        } else if (syouhinData.syouhinmei.length >= 20) {
+            addError('商品名は20文字以下にしてください');
+        }
+        if (syouhinData.nedan == "") {
+            addError('値段を入力してください');
+        } else if (isNaN(syouhinData.nedan)) {
+            console.log(syouhinData.nedan);
+            addError('値段には数字を入力してください');
+        } else if (syouhinData.nedan < 0 || syouhinData.nedan % 1 != 0) {
+            addError('値段は正の整数にしてください');
+        }
+        if (error == 1) {
+            socket.emit('Error', messageHtml);
+        } else {
+            socket.emit('Error', ''); //クリア
+            var query = {
+                syouhinmei: syouhinData.syouhinmei
+            };
+            Syouhin.find(query, function (err, items) {
+                if (err) {
+                    console.log(err);
+                }
+                if (items.length != 0) { //データベースに同じ商品名のものがない場合
+                    socket.emit('Error', '<p>同じ商品名のものがすでにあります</P>');
+                } else {
+                    syouhinData.uriagekosu = 0;
+                    var syouhin = new Syouhin(syouhinData);
+                    indexToId.push(syouhin._id);
+                    syouhin.save(function (err) {
+                        if (err) {
+                            return;
+                        }
+                        sendSyouhin();
+                    });
+                }
+            });
+        }
     });
     socket.on('addKounyu', function (kounyuData) {
         var kounyu = new Kounyu(kounyuData);
@@ -155,9 +196,7 @@ io.sockets.on('connection', function (socket) {
             var newUriagekosu = parseInt(item.uriagekosu) + parseInt(kounyuData.kosu);
             item.uriagekosu = newUriagekosu;
             item.save();
-            Syouhin.find(function (err, items) {
-                io.sockets.emit('addSyouhinRe', items);
-            });
+            sendSyouhin();
         });
     });
     socket.on('sakujo', function (sakujoId) {
@@ -173,9 +212,7 @@ io.sockets.on('connection', function (socket) {
                     var newUriagekosu = parseInt(item.uriagekosu) - parseInt(kounyuData.kosu);
                     item.uriagekosu = newUriagekosu;
                     item.save();
-                    Syouhin.find(function (err, items) {
-                        io.sockets.emit('addSyouhinRe', items);
-                    });
+                    sendSyouhin();
                 });
             });
         });
@@ -194,9 +231,7 @@ io.sockets.on('connection', function (socket) {
                 var newUriagekosu = parseInt(item.uriagekosu) + parseInt(kounyuData.kosu);
                 item.uriagekosu = newUriagekosu;
                 item.save();
-                Syouhin.find(function (err, items) {
-                    io.sockets.emit('addSyouhinRe', items);
-                });
+                sendSyouhin();
             });
         });
     });

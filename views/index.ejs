@@ -9,7 +9,6 @@
     <script src="/javascripts/jquery-1.8.3.min.js"></script>
     <script>
         var timerId; //setTimeOutを止めるのに使う
-        // 新しい関数たち
         function writeSyouhinList(hairetu) {
             //プルダウンの値を保持するため①
             var keepVal = [];
@@ -107,36 +106,14 @@
             $(document).on('click', '#syouhintuika', function () {
                 var syouhinmei = $('#tsuikasyouhin').val();
                 var syouhinNedan = toHankakuNum($('#syouhinnedan').val());
-                var messageHtml = '';
-                var error = 0;
-
-                function addError(str) {
-                    messageHtml += '<p>' + str + '</p>';
-                    error = 1;
+                var syouhinData = {
+                    syouhinmei: syouhinmei,
+                    nedan: syouhinNedan
                 }
-                if (syouhinmei == "") {
-                    addError('商品名を入力してください');
-                }
-                if (syouhinNedan == "") {
-                    addError('値段を入力してください');
-                } else if (isNaN(syouhinNedan)) {
-                    addError('値段には数字を入力してください');
-                } else if (syouhinNedan < 0 || syouhinNedan % 1 != 0) {
-                    addError('値段は正の整数にしてください');
-                }
-                if (error == 0) {
-                    alertOnDiv(); //クリア
-                    var syouhinData = {
-                        syouhinmei: syouhinmei,
-                        nedan: syouhinNedan
-                    }
-                    socket.emit('addSyouhin', syouhinData);
-                    $('#tsuikasyouhin').val('');
-                    $('#syouhinnedan').val('');
-                } else {
-                    alertOnDiv(messageHtml);
-                }
-                $(this).closest('select').val('1'); //動いてない
+                socket.emit('addSyouhin', syouhinData);
+                $('#tsuikasyouhin').val('');
+                $('#syouhinnedan').val('');
+                $(this).parent().parent().find('select:first').val('1'); //動いてない
             });
             $(document).on('click', '.kounyu', function () {
                 var date = new Date();
@@ -190,8 +167,8 @@
             });
             socket.on('addSyouhinRe', function (syouhinData) {
                 var ruikei = 0;
-                syouhinData.forEach(function(data){
-                    ruikei += data.nedan*data.uriagekosu;
+                syouhinData.forEach(function (data) {
+                    ruikei += data.nedan * data.uriagekosu;
                 });
                 $('#ruikei').text(ruikei);
                 syouhin = syouhinData;
@@ -203,10 +180,11 @@
             socket.on('hukkatuRe', function (hukkatuId) {
                 $('#' + hukkatuId).closest('tr').removeClass('deleted usui');
             });
-            socket.on('Error', function (errorCode) {
-                switch (errorCode) {
-                case 0:
-                    alertOnDiv('<p>同じ商品名のものがすでにあります</P>')
+            socket.on('Error', function (msg) {
+                if(msg.length == 0) {
+                    alertOnDiv();
+                }else{
+                    alertOnDiv(msg)
                 }
             });
         });
@@ -217,7 +195,7 @@
     <form>
         商品名
         <input id="tsuikasyouhin" type="text">
-        <br>値段　
+        <br>値段
         <input id="syouhinnedan">
         <input id="syouhintuika" type="button" value="商品追加">
     </form>
@@ -226,7 +204,8 @@
         <div>
             <table>
                 <tr>
-                    <th>累計売上</th><td id="ruikei"></td>
+                    <th>累計売上</th>
+                    <td id="ruikei"></td>
                 </tr>
             </table>
         </div>
