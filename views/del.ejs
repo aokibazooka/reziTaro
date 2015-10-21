@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>会計</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/javascripts/jquery-1.8.3.min.js"></script>
+    <script>
+        $(function () {
+            var socket = io.connect('http://' + location.host + '/');
+            $(document).on('click', '#del', function () {
+                socket.emit('dell');
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <button id="del">データベース初期化</button>
+</body>
+
+</html>
