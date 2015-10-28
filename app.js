@@ -133,7 +133,7 @@ io.sockets.on('connection', function (socket) {
         Kounyu.remove({}, function (err) {
             console.log('collection removed')
         });
-        for(h=0; h<indexToId.length; h++){
+        for (h = 0; h < indexToId.length; h++) {
             indexToId.pop();
         }
         console.log('初期化後のindexToId ' + indexToId.length);
@@ -252,20 +252,23 @@ io.sockets.on('connection', function (socket) {
     });
     socket.on('hukkatu', function (hukkatuId) {
         Kounyu.findById(hukkatuId, function (err, kounyuData) {
-            kounyuData.delete = false;
-            kounyuData.save(function (err) {
-                if (err) {
-                    return;
-                }
-                io.sockets.emit('hukkatuRe', hukkatuId);
-            });
-            var id = indexToId[kounyuData.syouhinId];
-            Syouhin.findById(id, function (err, item) {
-                var newUriagekosu = parseInt(item.uriagekosu) + parseInt(kounyuData.kosu);
-                item.uriagekosu = newUriagekosu;
-                item.save();
-                sendSyouhin();
-            });
+            if (kounyuData.delete = true) {
+                kounyuData.delete = false;
+                kounyuData.save(function (err) {
+                    if (err) {
+                        return;
+                    }
+                    io.sockets.emit('hukkatuRe', hukkatuId);
+                });
+                var id = indexToId[kounyuData.syouhinId];
+                Syouhin.findById(id, function (err, item) {
+                    var newUriagekosu = parseInt(item.uriagekosu) + parseInt(kounyuData.kosu);
+                    item.uriagekosu = newUriagekosu;
+                    item.save();
+                    sendSyouhin();
+                });
+
+            }
         });
     });
 });
