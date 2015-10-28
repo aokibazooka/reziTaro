@@ -32,7 +32,7 @@
                     .append('<td>' + obj.uriagekosu + '</td>')
                     .append('<td>' + uriage + '</td>')
                     .append($('<td></td>').append(select))
-                    .append('<td><input class="kounyu" id="syouhin' + index + '" type="button" value="購入" /></td>');
+                    .append('<td><input class="kounyu" id="syouhin' + index + '" type="button" value="購入"></td>');
                 $('#syouhinList').append(elem);
             });
             // プルダウンの値を維持するため②
@@ -43,7 +43,7 @@
         }
 
         function addToNyuryokuList(obj) {
-            var elem = $('<tr id=' + obj.id + ' class="kounyu"></tr>')
+            var elem = $('<tr id=' + obj.id + '></tr>')
                 .append('<td>' + obj.time + '</td>')
                 .append('<td>' + obj.syouhinmei + '</td>')
                 .append('<td>' + obj.kosu + '</td>')
@@ -104,7 +104,6 @@
             var syouhin = [];
             var socket = io.connect('http://' + location.host + '/');
             $(document).on('click', '#syouhintuika', function () {
-                console.log('クリック：#syouhintuika');
                 var syouhinmei = $('#tsuikasyouhin').val();
                 var syouhinNedan = toHankakuNum($('#syouhinnedan').val());
                 var syouhinData = {
@@ -117,7 +116,6 @@
                 $(this).parent().parent().find('select:first').val('1'); //動いてない
             });
             $(document).on('click', '.kounyu', function () {
-                console.log('クリック：.kounyu');
                 var date = new Date();
                 var month = date.getMonth() + 1;
                 var day = date.getDate();
@@ -133,12 +131,10 @@
                 socket.emit('addKounyu', kounyuData);
             });
             $(document).on('click', '.sakujo', function () {
-                console.log('クリック：.sakujo');
                 var sakujoId = $(this).closest('tr').attr("id");
                 socket.emit('sakujo', sakujoId);
             });
             $(document).on('click', '.sakujoTorikesi', function () {
-                console.log('クリック：.sakujoTorikesi');
                 $(this).addClass('sakujoTorikesiEnd').removeClass('sakujoTorikesi');
                 $(this).val('完了');
                 $('.sakujo').val('復活');
@@ -147,14 +143,12 @@
                 $('.sakujo').addClass('hukkatu');
                 $('.sakujo').removeClass('sakujo');
                 $(document).on('click', '.hukkatu', function () {
-                    console.log('クリック：.hukkatu');
                     var hukkatuId = $(this).closest('tr').attr("id");
                     $(this).addClass('deleted');
                     socket.emit('hukkatu', hukkatuId);
                 });
             });
             $(document).on('click', '.sakujoTorikesiEnd', function () {
-                console.log('クリック：.sakujoTorikesiEnd');
                 $(this).addClass('sakujoTorikesi').removeClass('sakujoTorikesiEnd');
                 $(this).val('復活モード');
                 $('.hukkatu').removeClass('deleted').addClass('sakujo').removeClass('hukkatu').val('削除');
@@ -187,9 +181,9 @@
                 $('#' + hukkatuId).closest('tr').removeClass('deleted usui');
             });
             socket.on('Error', function (msg) {
-                if (msg.length == 0) {
+                if(msg.length == 0) {
                     alertOnDiv();
-                } else {
+                }else{
                     alertOnDiv(msg)
                 }
             });

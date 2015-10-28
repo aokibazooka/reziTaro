@@ -15,7 +15,7 @@ var app = express();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 // 追加
-app.set('port', process.env.PORT || 3000);
+app.set('port', process.env.PORT || 3210);
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(__dirname + '/public/favicon.ico'));
@@ -67,7 +67,7 @@ app.use(function (err, req, res, next) {
 });
 
 var mongoose = require('mongoose');
-var ObjectId = require('mongoose').Schema.ObjectId;
+//var ObjectId = require('mongoose').Schema.ObjectId;
 var db = mongoose.connect('mongodb://localhost/kaikei_demo10');
 var SyouhinSchema = new mongoose.Schema({
     syouhinmei: {
@@ -133,8 +133,20 @@ io.sockets.on('connection', function (socket) {
         Kounyu.remove({}, function (err) {
             console.log('collection removed')
         });
+        for(h=0; h<indexToId.length; h++){
+            indexToId.pop();
+        }
+        console.log('初期化後のindexToId ' + indexToId.length);
+        var kounyuSu = 0;
+        Kounyu.find(function (err, items) {
+            items.forEach(function (item, index) {
+                io.sockets.emit('addKounyuRe', item);
+            });
+        });
+        sendSyouhin();
     });
     socket.on('addSyouhin', function (syouhinData) {
+        console.log('届いた商品' + syouhinData.syouhinmei); //OK
         var messageHtml = '';
         var error = 0;
 
@@ -172,11 +184,18 @@ io.sockets.on('connection', function (socket) {
                     syouhinData.uriagekosu = 0;
                     var syouhin = new Syouhin(syouhinData);
                     indexToId.push(syouhin._id);
+                    console.log('indexToId ' + indexToId);
+                    console.log('addSyouhinのsyouhindate._id ' + syouhin._id);
                     syouhin.save(function (err) {
                         if (err) {
                             return;
                         }
                         sendSyouhin();
+                        Syouhin.find(function (err, items) {
+                            items.forEach(function (item) {
+                                console.log(item);
+                            });
+                        });
                     });
                 }
             });
@@ -192,7 +211,21 @@ io.sockets.on('connection', function (socket) {
             io.sockets.emit('addKounyuRe', kounyu);
         });
         var id = indexToId[kounyuData.syouhinId];
+        console.log('id' + id);
+
+
+
+        Syouhin.find(function (err, items) {
+            console.log('syouhin.find内');
+            items.forEach(function (item) {
+                item.syouhinmei = xssFilters.inHTMLData(item.syouhinmei);
+                console.log('商品' + item);
+            });
+        });
+
+
         Syouhin.findById(id, function (err, item) {
+            console.log('syouhin' + item);
             var newUriagekosu = parseInt(item.uriagekosu) + parseInt(kounyuData.kosu);
             item.uriagekosu = newUriagekosu;
             item.save();
